@@ -119,6 +119,24 @@ jobs:
           cache-from: ${{ steps.image.outputs.cache-from }}
           cache-to: ${{ steps.image.outputs.cache-to }}
 
+  preview-optimistic:
+    if: >-
+      github.event_name == 'push' && github.ref_name != 'main' &&
+      github.repository_owner == 'prismatic-hq' && vars.AWS_ROLE_ARN != ''
+    permissions:
+      contents: read
+      checks: write
+      deployments: write
+      statuses: write
+      pull-requests: write
+    uses: prismatic-hq/caldera-platform/.github/workflows/preview-environment.yml@main
+    with:
+      repo: ${{ github.event.repository.name }}
+      branch: ${{ github.ref_name }}
+      sha: ${{ github.sha }}
+    secrets:
+      CALDERA_TOKEN: ${{ secrets.CALDERA_TOKEN }}
+
   preview:
     needs: [lint, test, build]
     if: github.event_name == 'push' && github.ref_name != 'main' && needs.build.outputs.published == 'true'
