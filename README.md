@@ -35,5 +35,7 @@ Migrations: `uv run alembic upgrade head`.
 
 ## CI
 
-Every push and pull request runs lint, tests and a Docker build. Pushes publish to ECR
-(`sha-<short-sha>`, `branch-<slug>`, `main`) only when the repo variable `AWS_ROLE_ARN` is set.
+Every push runs lint, tests and one multi-arch (amd64, arm64) image build in parallel jobs; pull
+requests run them only when they come from forks. When the repo variable `AWS_ROLE_ARN` is set,
+pushes publish `sha-<short-sha>` (plus `main` on `main`) to ECR with a BuildKit registry cache, and
+skip the build when that tag already exists. Fork code never gets AWS credentials.
