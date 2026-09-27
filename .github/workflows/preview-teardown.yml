@@ -9,7 +9,7 @@ jobs:
   teardown:
     if: >-
       github.event.ref_type == 'branch' && github.event.ref != 'main' &&
-      github.repository_owner == 'prismatic-hq' && vars.AWS_ROLE_ARN != ''
+      github.repository_owner == 'prismatic-hq' && vars.AWS_REGION != ''
     permissions:
       contents: read
       checks: write

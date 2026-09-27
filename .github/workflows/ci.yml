@@ -20,7 +20,7 @@ env:
 jobs:
   lint:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'push' && format('{0}-runners', github.event.repository.name) || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
@@ -31,7 +31,7 @@ jobs:
 
   test:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'push' && format('{0}-runners', github.event.repository.name) || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
@@ -42,22 +42,15 @@ jobs:
 
   build:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    runs-on: ${{ github.event_name == 'push' && format('{0}-runners', github.event.repository.name) || 'ubuntu-latest' }}
     env:
-      PUBLISH: ${{ github.event_name == 'push' && github.repository_owner == 'prismatic-hq' && vars.AWS_ROLE_ARN != '' }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      PUBLISH: ${{ github.event_name == 'push' && github.repository_owner == 'prismatic-hq' && vars.AWS_REGION != '' }}
     outputs:
       published: ${{ steps.image.outputs.published }}
       tag: ${{ steps.image.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
-      - if: env.PUBLISH == 'true'
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
       - if: env.PUBLISH == 'true'
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -76,15 +69,15 @@ jobs:
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if result=$(aws ecr describe-images --repository-name "$IMAGE_NAME" --image-ids imageTag="$tag" 2>&1); then
+          repository="$REGISTRY/$IMAGE_NAME"
+          if result=$(docker buildx imagetools inspect "$repository:$tag" 2>&1); then
             exists=true
-          elif grep -q ImageNotFoundException <<<"$result"; then
+          elif grep -qi 'not found' <<<"$result"; then
             exists=false
           else
             echo "::error::cannot check $IMAGE_NAME:$tag in ECR: $result"
             exit 1
           fi
-          repository="$REGISTRY/$IMAGE_NAME"
           cache="$REGISTRY/$BUILD_CACHE_REPOSITORY:$IMAGE_NAME"
           {
             echo "exists=$exists"
@@ -122,7 +115,7 @@ jobs:
   preview-optimistic:
     if: >-
       github.event_name == 'push' && github.ref_name != 'main' &&
-      github.repository_owner == 'prismatic-hq' && vars.AWS_ROLE_ARN != ''
+      github.repository_owner == 'prismatic-hq' && vars.AWS_REGION != ''
     permissions:
       contents: read
       checks: write
