@@ -7,10 +7,12 @@ from sqlalchemy.orm import Session
 
 from tremor_api.db import get_session
 from tremor_api.models import Alert
-from tremor_api.schemas import AlertCreate, AlertRead, AlertUpdate
+from tremor_api.schemas import AlertCreate, AlertRead, AlertUpdate, Severity
+from tremor_api.steward import StewardClient, StewardUnavailable, get_steward
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 SessionDep = Annotated[Session, Depends(get_session)]
+StewardDep = Annotated[StewardClient, Depends(get_steward)]
 
 
 def _get_or_404(session: Session, alert_id: uuid.UUID) -> Alert:
@@ -21,9 +23,18 @@ def _get_or_404(session: Session, alert_id: uuid.UUID) -> Alert:
 
 
 @router.post("", response_model=AlertRead, status_code=status.HTTP_201_CREATED)
-def create_alert(payload: AlertCreate, session: SessionDep) -> Alert:
-    alert = Alert(**payload.model_dump())
+def create_alert(payload: AlertCreate, session: SessionDep, steward: StewardDep) -> Alert:
+    alert = Alert(id=uuid.uuid4(), **payload.model_dump())
     session.add(alert)
+    session.flush()
+    if payload.severity == Severity.CRITICAL:
+        try:
+            alert.work_order_id = steward.open_inspection(alert.station, alert.id)
+        except StewardUnavailable as error:
+            session.rollback()
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY, f"steward-api unavailable: {error}"
+            ) from error
     session.commit()
     session.refresh(alert)
     return alert

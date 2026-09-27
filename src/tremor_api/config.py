@@ -24,3 +24,10 @@ class DatabaseSettings(BaseSettings):
             port=self.port,
             database=self.name,
         )
+
+
+class StewardSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="STEWARD_")
+
+    url: str = "http://steward-api:8000"
+    timeout_seconds: float = 2.0

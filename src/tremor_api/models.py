@@ -20,6 +20,7 @@ class Alert(Base):
     status: Mapped[str] = mapped_column(String(16), default="open")
     magnitude: Mapped[float | None] = mapped_column(Float)
     message: Mapped[str] = mapped_column(Text)
+    work_order_id: Mapped[uuid.UUID | None]
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

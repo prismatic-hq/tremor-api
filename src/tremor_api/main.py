@@ -8,23 +8,29 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from tremor_api import alerts
-from tremor_api.config import DatabaseSettings
+from tremor_api.config import DatabaseSettings, StewardSettings
 from tremor_api.db import build_engine, build_session_factory
+from tremor_api.steward import StewardClient
 
 PROBE_PATHS = ["/healthz", "/readyz", "/metrics"]
 logger = logging.getLogger(__name__)
 
 
-def create_app(settings: DatabaseSettings | None = None) -> FastAPI:
+def create_app(
+    settings: DatabaseSettings | None = None, steward_settings: StewardSettings | None = None
+) -> FastAPI:
     engine = build_engine(settings or DatabaseSettings())
+    steward = StewardClient(steward_settings or StewardSettings())
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
+        steward.close()
         engine.dispose()
 
     app = FastAPI(title="tremor-api", lifespan=lifespan)
     app.state.session_factory = build_session_factory(engine)
+    app.state.steward = steward
     app.include_router(alerts.router)
 
     @app.get("/healthz", include_in_schema=False)

@@ -9,7 +9,8 @@ from pydantic import SecretStr
 from sqlalchemy import Engine, text
 from testcontainers.community.postgres import PostgresContainer
 
-from tremor_api.config import DatabaseSettings
+from tests.steward_stub import StewardStub, running_steward_stub
+from tremor_api.config import DatabaseSettings, StewardSettings
 from tremor_api.db import build_engine
 from tremor_api.main import create_app
 
@@ -41,8 +42,17 @@ def engine(db_settings: DatabaseSettings) -> Iterator[Engine]:
 
 
 @pytest.fixture
-def client(engine: Engine, db_settings: DatabaseSettings) -> Iterator[TestClient]:
+def steward() -> Iterator[StewardStub]:
+    with running_steward_stub() as stub:
+        yield stub
+
+
+@pytest.fixture
+def client(
+    engine: Engine, db_settings: DatabaseSettings, steward: StewardStub
+) -> Iterator[TestClient]:
     with engine.begin() as connection:
         connection.execute(text("TRUNCATE tremor.alerts"))
-    with TestClient(create_app(db_settings)) as test_client:
+    steward_settings = StewardSettings(url=steward.url, timeout_seconds=0.5)
+    with TestClient(create_app(db_settings, steward_settings)) as test_client:
         yield test_client
