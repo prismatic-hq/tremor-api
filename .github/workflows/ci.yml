@@ -114,7 +114,7 @@ jobs:
 
   preview-optimistic:
     if: >-
-      github.event_name == 'push' && github.ref_name != 'main' &&
+      github.event_name == 'push' && github.event.created && github.ref_name != 'main' &&
       github.repository_owner == 'prismatic-hq' && vars.AWS_REGION != ''
     permissions:
       contents: read
