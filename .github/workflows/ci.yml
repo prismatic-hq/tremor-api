@@ -19,7 +19,7 @@ env:
 
 jobs:
   lint:
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    if: github.event_name == 'pull_request' || github.ref_name == 'main'
     runs-on: ${{ github.event_name == 'push' && format('{0}-runners', github.event.repository.name) || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
@@ -30,7 +30,7 @@ jobs:
       - run: uv run pre-commit run --all-files --show-diff-on-failure
 
   test:
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    if: github.event_name == 'pull_request' || github.ref_name == 'main'
     runs-on: ${{ github.event_name == 'push' && format('{0}-runners', github.event.repository.name) || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
@@ -132,7 +132,7 @@ jobs:
       CALDERA_APP_PRIVATE_KEY: ${{ secrets.CALDERA_APP_PRIVATE_KEY }}
 
   preview:
-    needs: [lint, test, build]
+    needs: build
     if: github.event_name == 'push' && github.ref_name != 'main' && needs.build.outputs.published == 'true'
     permissions:
       contents: read

@@ -39,8 +39,9 @@ A `critical` alert first opens a high-priority steward-api work order at `STEWAR
 
 ## CI
 
-Every push runs lint, tests and one multi-arch (amd64, arm64) image build in parallel jobs; pull
-requests run them only when they come from forks. When the repo variable `AWS_ROLE_ARN` is set,
+Lint and tests run on pushes to `main` and on pull requests; feature-branch pushes skip them so
+previews wait only on the image build. Every push builds one multi-arch (amd64, arm64) image; pull
+requests build only when they come from forks. When the repo variable `AWS_ROLE_ARN` is set,
 pushes publish `sha-<short-sha>` (plus `main` on `main`) to ECR with a BuildKit registry cache, and
 skip the build when that tag already exists. Fork code never gets AWS credentials.
 
