@@ -9,22 +9,22 @@ Related repos:
 
 ## Quick Start
 
-Requires `uv`, `task` and Docker.
+Requires [mise](https://mise.jdx.dev/getting-started.html) and Docker (mise installs Python and uv).
 
 ```sh
-task init && task up   # API on http://localhost:8001/docs
+mise trust && mise install && mise run init && mise run up # API on http://localhost:8001/docs
 ```
 
 ## Key Commands
 
 | Command | What it does |
 |---|---|
-| `task init` | Install dependencies and git hooks, create `.env` from `.env.example` |
-| `task dev` | Postgres in Docker, API with hot reload |
-| `task test` | pytest against real Postgres (testcontainers) |
-| `task lint` | ruff lint and format check |
-| `task build` | Build the container image |
-| `task up` / `task down` | Start / stop the Docker Compose stack |
+| `mise run init` | Install dependencies and git hooks, create `.env` from `.env.example` |
+| `mise run dev` | Postgres in Docker, API with hot reload |
+| `mise run test` | pytest against real Postgres (testcontainers); extra args go to pytest |
+| `mise run lint` | ruff lint and format check |
+| `mise run build` | Build the container image |
+| `mise run up` / `mise run down` | Start / stop the Docker Compose stack |
 
 ## Configuration
 
