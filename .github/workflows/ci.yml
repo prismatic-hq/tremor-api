@@ -14,9 +14,12 @@ concurrency:
 
 env:
   IMAGE_NAME: tremor-api
+  BUILD_CACHE_REPOSITORY: build-cache
+  PLATFORMS: linux/amd64,linux/arm64
 
 jobs:
   lint:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -27,6 +30,7 @@ jobs:
       - run: uv run pre-commit run --all-files --show-diff-on-failure
 
   test:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -37,49 +41,80 @@ jobs:
       - run: uv run pytest
 
   build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/build-push-action@v7
-        with:
-          context: .
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  push:
-    needs: [lint, test, build]
-    if: github.event_name == 'push' && vars.AWS_ROLE_ARN != ''
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
+    env:
+      PUBLISH: ${{ github.event_name == 'push' && github.repository_owner == 'prismatic-hq' && vars.AWS_ROLE_ARN != '' }}
+    outputs:
+      published: ${{ steps.image.outputs.published }}
+      tag: ${{ steps.image.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
-      - uses: aws-actions/configure-aws-credentials@v6
+      - if: env.PUBLISH == 'true'
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
-      - id: ecr
+      - if: env.PUBLISH == 'true'
+        id: ecr
         uses: aws-actions/amazon-ecr-login@v2
-      - id: tags
+      - id: image
         env:
-          REPOSITORY: ${{ steps.ecr.outputs.registry }}/${{ env.IMAGE_NAME }}
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
           BRANCH: ${{ github.ref_name }}
         run: |
-          slug=$(printf '%s' "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g' | cut -c1-100)
+          tag="sha-${GITHUB_SHA::7}"
+          printf 'tag=%s\npublished=%s\n' "$tag" "$PUBLISH" >> "$GITHUB_OUTPUT"
+          if [ "$PUBLISH" != "true" ]; then
+            {
+              echo "exists=false"
+              echo "cache-from=type=gha,scope=$IMAGE_NAME"
+              echo "cache-to=type=gha,scope=$IMAGE_NAME,mode=max"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if result=$(aws ecr describe-images --repository-name "$IMAGE_NAME" --image-ids imageTag="$tag" 2>&1); then
+            exists=true
+          elif grep -q ImageNotFoundException <<<"$result"; then
+            exists=false
+          else
+            echo "::error::cannot check $IMAGE_NAME:$tag in ECR: $result"
+            exit 1
+          fi
+          repository="$REGISTRY/$IMAGE_NAME"
+          cache="$REGISTRY/$BUILD_CACHE_REPOSITORY:$IMAGE_NAME"
           {
+            echo "exists=$exists"
+            echo "repository=$repository"
+            echo "cache-from=type=registry,ref=$cache"
+            echo "cache-to=type=registry,ref=$cache,mode=max,image-manifest=true,oci-mediatypes=true"
             echo "tags<<EOF"
-            echo "$REPOSITORY:sha-${GITHUB_SHA::7}"
-            echo "$REPOSITORY:branch-$slug"
-            if [ "$BRANCH" = "main" ]; then echo "$REPOSITORY:main"; fi
+            echo "$repository:$tag"
+            if [ "$BRANCH" = "main" ]; then echo "$repository:main"; fi
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/build-push-action@v7
+      - if: steps.image.outputs.exists == 'true'
+        run: echo "::notice::$IMAGE_NAME:${{ steps.image.outputs.tag }} already in ECR; skipping build"
+      - if: steps.image.outputs.exists == 'true' && github.ref_name == 'main'
+        env:
+          REPOSITORY: ${{ steps.image.outputs.repository }}
+          TAG: ${{ steps.image.outputs.tag }}
+        run: docker buildx imagetools create --tag "$REPOSITORY:main" "$REPOSITORY:$TAG"
+      - if: steps.image.outputs.exists != 'true'
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+      - if: steps.image.outputs.exists != 'true'
+        uses: docker/setup-buildx-action@v4
+      - if: steps.image.outputs.exists != 'true'
+        uses: docker/build-push-action@v7
         with:
           context: .
-          push: true
-          tags: ${{ steps.tags.outputs.tags }}
-          cache-from: type=gha
+          platforms: ${{ env.PLATFORMS }}
+          push: ${{ env.PUBLISH == 'true' }}
+          tags: ${{ steps.image.outputs.tags }}
+          cache-from: ${{ steps.image.outputs.cache-from }}
+          cache-to: ${{ steps.image.outputs.cache-to }}
