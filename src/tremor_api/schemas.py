@@ -40,5 +40,6 @@ class AlertRead(BaseModel):
     status: AlertStatus
     magnitude: float | None
     message: str
+    work_order_id: uuid.UUID | None
     created_at: datetime
     updated_at: datetime

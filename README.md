@@ -33,6 +33,11 @@ Database settings come from `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` and `DB_P
 Endpoints: `/alerts`, `/healthz`, `/readyz`, `/metrics`.
 Migrations: `uv run alembic upgrade head`.
 
+## Cross-service flow
+
+A `critical` alert first opens a high-priority steward-api work order at `STEWARD_URL` (default
+`http://steward-api:8000`); a steward error or 2s timeout saves nothing and returns 502.
+
 ## CI
 
 Every push runs lint, tests and one multi-arch (amd64, arm64) image build in parallel jobs; pull
