@@ -1,0 +1,24 @@
+name: preview-teardown
+
+on: delete
+
+permissions:
+  contents: read
+
+jobs:
+  teardown:
+    if: >-
+      github.event.ref_type == 'branch' && github.event.ref != 'main' &&
+      github.repository_owner == 'prismatic-hq' && vars.AWS_ROLE_ARN != ''
+    permissions:
+      contents: read
+      checks: write
+      deployments: write
+      statuses: write
+      pull-requests: write
+    uses: prismatic-hq/caldera-platform/.github/workflows/preview-environment-teardown.yml@main
+    with:
+      repo: ${{ github.event.repository.name }}
+      branch: ${{ github.event.ref }}
+    secrets:
+      CALDERA_TOKEN: ${{ secrets.CALDERA_TOKEN }}

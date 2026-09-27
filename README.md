@@ -4,8 +4,7 @@ Seismic signal streams and alerts. FastAPI + Postgres CRUD service with an `aler
 Owns the `tremor` Postgres schema, including its Alembic version table.
 
 Related repos:
-- [caldera-platform](https://github.com/prismatic-hq/caldera-platform): CDK, GitOps, shared Helm chart, event contracts
-- [applications-infra](https://github.com/prismatic-hq/applications-infra): desired state per environment
+- [caldera-platform](https://github.com/prismatic-hq/caldera-platform): CDK platform, `preview` CLI, services Helm chart, event contracts
 - [steward-api](https://github.com/prismatic-hq/steward-api): resource and operations management service
 
 ## Quick Start
@@ -44,3 +43,8 @@ Every push runs lint, tests and one multi-arch (amd64, arm64) image build in par
 requests run them only when they come from forks. When the repo variable `AWS_ROLE_ARN` is set,
 pushes publish `sha-<short-sha>` (plus `main` on `main`) to ECR with a BuildKit registry cache, and
 skip the build when that tag already exists. Fork code never gets AWS credentials.
+
+## Preview environments
+
+Non-`main` pushes call caldera-platform `preview-environment.yml` twice: in parallel with the build,
+then after the image push. Branch deletion calls `preview-environment-teardown.yml`. Never forks.
