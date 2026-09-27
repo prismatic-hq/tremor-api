@@ -1,0 +1,46 @@
+[tools]
+python = "3.12"
+uv = "0.12"
+
+[env]
+_.file = ".env"
+
+[vars]
+image = "tremor-api:local"
+
+[tasks.init]
+description = "Install dependencies, git hooks and a local .env"
+run = [
+  "uv sync --locked",
+  "uv run pre-commit install",
+  "test -f .env || cp .env.example .env",
+]
+
+[tasks.lint]
+description = "Lint and check formatting"
+run = ["uv run ruff check .", "uv run ruff format --check ."]
+
+[tasks.dev]
+description = "Run Postgres in Docker and the API with hot reload"
+raw = true
+run = [
+  "docker compose up -d --wait db",
+  "uv run alembic upgrade head",
+  "uv run uvicorn --factory tremor_api.main:create_app --reload --port ${API_PORT:-8001}",
+]
+
+[tasks.test]
+description = "Run tests against Postgres in testcontainers"
+run = "uv run pytest"
+
+[tasks.build]
+description = "Build the container image"
+run = "docker build -t {{vars.image}} ."
+
+[tasks.up]
+description = "Start Postgres, run migrations and start the API in Docker"
+run = "docker compose up -d --build --wait api"
+
+[tasks.down]
+description = "Stop the local stack"
+run = "docker compose down"
