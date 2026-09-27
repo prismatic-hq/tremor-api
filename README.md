@@ -50,3 +50,4 @@ skip the build when that tag already exists. Fork code never gets AWS credential
 Non-`main` pushes call caldera-platform `preview-environment.yml` twice: in parallel with the build,
 then after the image push. Branch deletion calls `preview-environment-teardown.yml`. Never forks.
 - Quake alert thresholds (preview demo)
+- Report refresh
