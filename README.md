@@ -35,10 +35,8 @@ Migrations: `uv run alembic upgrade head`.
 
 ## Cross-service flow
 
-A `critical` alert opens a high-priority steward-api work order (`source_alert_id` = alert id)
-before the alert commits, and stores its `work_order_id`. `STEWARD_URL` (default
-`http://steward-api:8000`, the in-namespace Service) sets the target; if steward-api errors or
-takes over 2s, nothing is saved and `POST /alerts` returns 502. Other severities never call it.
+A `critical` alert first opens a high-priority steward-api work order at `STEWARD_URL` (default
+`http://steward-api:8000`); a steward error or 2s timeout saves nothing and returns 502.
 
 ## CI
 
