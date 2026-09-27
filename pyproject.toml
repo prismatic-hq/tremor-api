@@ -1,0 +1,39 @@
+[project]
+name = "tremor-api"
+version = "0.1.0"
+description = "Seismic signal streams and alerts"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "alembic>=1.16",
+    "fastapi>=0.118",
+    "prometheus-fastapi-instrumentator>=7.1",
+    "psycopg[binary]>=3.2",
+    "pydantic-settings>=2.10",
+    "sqlalchemy>=2.0",
+    "uvicorn[standard]>=0.37",
+]
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.13",
+    "pre-commit>=4.3",
+    "pytest>=8.4",
+    "ruff>=0.14",
+    "testcontainers[postgres]>=4.13",
+]
+
+[build-system]
+requires = ["uv_build>=0.12,<0.13"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
