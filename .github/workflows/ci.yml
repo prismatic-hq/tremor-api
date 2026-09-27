@@ -135,7 +135,8 @@ jobs:
       branch: ${{ github.ref_name }}
       sha: ${{ github.sha }}
     secrets:
-      CALDERA_TOKEN: ${{ secrets.CALDERA_TOKEN }}
+      CALDERA_APP_CLIENT_ID: ${{ secrets.CALDERA_APP_CLIENT_ID }}
+      CALDERA_APP_PRIVATE_KEY: ${{ secrets.CALDERA_APP_PRIVATE_KEY }}
 
   preview:
     needs: [lint, test, build]
@@ -152,4 +153,5 @@ jobs:
       branch: ${{ github.ref_name }}
       sha: ${{ github.sha }}
     secrets:
-      CALDERA_TOKEN: ${{ secrets.CALDERA_TOKEN }}
+      CALDERA_APP_CLIENT_ID: ${{ secrets.CALDERA_APP_CLIENT_ID }}
+      CALDERA_APP_PRIVATE_KEY: ${{ secrets.CALDERA_APP_PRIVATE_KEY }}
